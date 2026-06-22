@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Stack 堆疊 — 運作、運用與 Infix/Postfix/Prefix</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel-2: #273449;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #38bdf8;
+    --accent-2: #a78bfa;
+    --ok: #34d399;
+    --warn: #fbbf24;
+    --danger: #f87171;
+    --border: #334155;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", "Microsoft JhengHei", system-ui, sans-serif;
+    background: radial-gradient(1200px 600px at 80% -10%, #1d3a5f 0, var(--bg) 55%);
+    color: var(--text);
+    line-height: 1.7;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+  header h1 {
+    font-size: 2rem; margin: 0 0 6px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  header p { color: var(--muted); margin-top: 0; }
+  section { margin-top: 48px; }
+  h2 {
+    font-size: 1.4rem; border-left: 4px solid var(--accent);
+    padding-left: 12px; margin-bottom: 8px;
+  }
+  h3 { font-size: 1.1rem; color: var(--accent); }
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+  }
+  code, .mono { font-family: "Cascadia Code", Consolas, monospace; }
+  .pill {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
+    background: var(--panel-2); color: var(--accent); font-size: .8rem;
+    border: 1px solid var(--border);
+  }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+  th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; }
+  th { background: var(--panel-2); color: var(--accent); }
+  td .mono { color: var(--warn); }
+  .grid { display: grid; gap: 14px; }
+  .grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 720px) { .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr; } }
+
+  /* ---------- 按鈕 ---------- */
+  button {
+    font: inherit; cursor: pointer; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text);
+    padding: 8px 14px; border-radius: 8px; transition: .15s;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  input[type="text"] {
+    font: inherit; background: #0b1220; color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px;
+  }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0; }
+
+  /* ---------- 互動式 Stack 視覺 ---------- */
+  .stack-demo { display: flex; gap: 30px; align-items: flex-end; flex-wrap: wrap; }
+  .stack-box {
+    width: 150px; min-height: 260px; border: 2px solid var(--border);
+    border-top: none; border-radius: 0 0 10px 10px;
+    display: flex; flex-direction: column-reverse; padding: 8px; gap: 8px;
+    position: relative; background: rgba(0,0,0,.2);
+  }
+  .stack-box::before {
+    content: "底部 (bottom)"; position: absolute; bottom: -24px; left: 0; right: 0;
+    text-align: center; color: var(--muted); font-size: .8rem;
+  }
+  .stack-item {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    color: #06121f; font-weight: 700; text-align: center;
+    padding: 12px; border-radius: 6px; animation: drop .35s ease;
+  }
+  .stack-item.top { outline: 3px solid var(--warn); outline-offset: 2px; }
+  @keyframes drop {
+    from { transform: translateY(-40px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+  .top-label { color: var(--warn); font-size: .85rem; }
+
+  /* ---------- CSS 動畫箭頭（方向性） ---------- */
+  .flow {
+    display: flex; align-items: center; justify-content: center;
+    flex-wrap: wrap; gap: 0; margin: 20px 0;
+  }
+  .node {
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px; text-align: center; min-width: 120px;
+  }
+  .node.start { border-color: var(--ok); }
+  .node.end { border-color: var(--accent-2); }
+  /* 水平動畫箭頭：流動的虛線 + 箭頭頭 */
+  .arrow {
+    --c: var(--accent);
+    position: relative; height: 4px; width: 64px; flex: 0 0 auto;
+    background-image: linear-gradient(90deg, var(--c) 60%, transparent 0);
+    background-size: 16px 4px; background-repeat: repeat-x;
+    animation: march 0.7s linear infinite;
+  }
+  .arrow::after {
+    content: ""; position: absolute; right: -2px; top: 50%;
+    transform: translateY(-50%);
+    border: 7px solid transparent; border-left-color: var(--c);
+    animation: pulse 0.9s ease-in-out infinite;
+  }
+  @keyframes march { to { background-position: 16px 0; } }
+  @keyframes pulse { 0%,100% { transform: translateY(-50%) translateX(0); } 50% { transform: translateY(-50%) translateX(4px); } }
+  /* 垂直方向箭頭（向下/向上），用於 push / pop 說明 */
+  .varrows { display: flex; gap: 40px; justify-content: center; margin: 16px 0; }
+  .vbox { text-align: center; color: var(--muted); }
+  .vline {
+    width: 4px; height: 70px; margin: 6px auto; position: relative;
+    background-image: linear-gradient(180deg, var(--accent) 60%, transparent 0);
+    background-size: 4px 14px;
+  }
+  .vline.down { animation: marchDown .7s linear infinite; }
+  .vline.up   { animation: marchUp .7s linear infinite; --c: var(--ok); background-image: linear-gradient(180deg, var(--ok) 60%, transparent 0); background-size: 4px 14px;}
+  .vline.down::after {
+    content: ""; position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
+    border: 7px solid transparent; border-top-color: var(--accent);
+  }
+  .vline.up::after {
+    content: ""; position: absolute; top: -2px; left: 50%; transform: translateX(-50%);
+    border: 7px solid transparent; border-bottom-color: var(--ok);
+  }
+  @keyframes marchDown { to { background-position: 0 14px; } }
+  @keyframes marchUp   { to { background-position: 0 -14px; } }
+
+  /* ---------- 轉換動畫（shunting yard） ---------- */
+  .conv { display: grid; grid-template-columns: 1fr 160px; gap: 16px; margin-top: 14px; }
+  @media (max-width: 720px) { .conv { grid-template-columns: 1fr; } }
+  .tokens { display: flex; gap: 6px; flex-wrap: wrap; }
+  .token {
+    padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);
+    background: #0b1220; font-family: monospace; font-weight: 700;
+  }
+  .token.active { border-color: var(--warn); color: var(--warn); box-shadow: 0 0 0 2px rgba(251,191,36,.25); }
+  .token.done { opacity: .4; }
+  .op-stack {
+    border: 2px solid var(--border); border-top: none; border-radius: 0 0 8px 8px;
+    min-height: 150px; display: flex; flex-direction: column-reverse; gap: 6px; padding: 6px;
+  }
+  .op-stack .stack-item { animation: drop .25s ease; padding: 8px; }
+  .out-line { font-family: monospace; font-size: 1.2rem; color: var(--ok); min-height: 1.6em; letter-spacing: 2px; }
+  .desc { color: var(--muted); min-height: 1.6em; }
+  .label-mini { color: var(--muted); font-size: .8rem; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Stack 堆疊</h1>
+    <p>運作原理 · 實際運用 · 運算式表示法（Infix / Postfix / Prefix）。含可互動的圖形與 CSS 動畫箭頭。</p>
+    <span class="pill">資料結構</span>
+    <span class="pill">LIFO</span>
+    <span class="pill">O(1) 操作</span>
+  </header>
+
+  <!-- 1. 運作原理 -->
+  <section>
+    <h2>1. Stack 如何運作</h2>
+    <div class="card">
+      <p>
+        Stack 是<strong>後進先出（LIFO, Last In First Out）</strong>的線性結構：
+        新增與移除都只在<strong>同一端（top，頂端）</strong>進行。
+        想像一疊盤子——最後放上去的，會最先被拿走。
+      </p>
+
+      <div class="varrows">
+        <div class="vbox">
+          <div><strong>push</strong>（壓入）</div>
+          <div class="vline down"></div>
+          <div>從頂端放入</div>
+        </div>
+        <div class="vbox">
+          <div><strong>pop</strong>（彈出）</div>
+          <div class="vline up"></div>
+          <div>從頂端取出</div>
+        </div>
+      </div>
+
+      <h3>互動試試看</h3>
+      <div class="controls">
+        <input type="text" id="pushVal" placeholder="輸入值，例如 42" maxlength="6" />
+        <button onclick="doPush()">push ⬇</button>
+        <button onclick="doPop()">pop ⬆</button>
+        <button onclick="doPeek()">peek 👁</button>
+        <button onclick="resetStack()">清空</button>
+        <span id="demoMsg" class="top-label"></span>
+      </div>
+      <div class="stack-demo">
+        <div>
+          <div class="top-label" id="topLabel">top → （空）</div>
+          <div class="stack-box" id="stackBox"></div>
+        </div>
+        <div style="color:var(--muted); max-width:360px">
+          <p><strong>觀察：</strong></p>
+          <ul>
+            <li><code>push</code> 永遠加在最上層（top）。</li>
+            <li><code>pop</code> 永遠移除最上層；空堆疊時為 underflow。</li>
+            <li><code>peek</code> 只看頂端，不移除。</li>
+            <li>所有操作皆為 <strong>O(1)</strong>。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. 核心操作 -->
+  <section>
+    <h2>2. 核心操作</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>操作</th><th>說明</th><th>時間複雜度</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">push(x)</td><td>將 x 壓入頂端</td><td>O(1)</td></tr>
+          <tr><td class="mono">pop()</td><td>移除並回傳頂端元素</td><td>O(1)</td></tr>
+          <tr><td class="mono">peek() / top()</td><td>回傳頂端元素但不移除</td><td>O(1)</td></tr>
+          <tr><td class="mono">isEmpty()</td><td>是否為空</td><td>O(1)</td></tr>
+          <tr><td class="mono">size()</td><td>元素數量</td><td>O(1)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3. 運用 -->
+  <section>
+    <h2>3. Stack 的運用</h2>
+    <div class="grid cols-3">
+      <div class="card"><h3>函式呼叫堆疊</h3>程式執行時的 call stack 保存返回位址與區域變數；遞迴即靠它運作。</div>
+      <div class="card"><h3>復原 / 重做</h3>編輯器的 Undo/Redo 以兩個 stack 分別記錄操作歷史。</div>
+      <div class="card"><h3>瀏覽器上一頁</h3>瀏覽歷史用 stack 實作「上一頁 / 下一頁」。</div>
+      <div class="card"><h3>括號配對</h3>遇左括號 push、遇右括號 pop 比對，檢查 <code>()[]{}</code> 是否平衡。</div>
+      <div class="card"><h3>運算式求值</h3>後序式 (postfix) 求值、中序轉後序，皆以 stack 為核心。</div>
+      <div class="card"><h3>DFS / 回溯</h3>深度優先搜尋、迷宮回溯用 stack 記錄路徑（或以遞迴隱含使用）。</div>
+      <div class="card"><h3>進位轉換</h3>十進位轉二/十六進位時，餘數 push 後再 pop 即得正確順序。</div>
+      <div class="card"><h3>語法剖析</h3>編譯器以 stack 進行運算子優先序與語法分析。</div>
+    </div>
+  </section>
+
+  <!-- 4. Infix / Postfix / Prefix -->
+  <section>
+    <h2>4. 運算式表示法：Infix / Postfix / Prefix</h2>
+    <div class="card">
+      <p>同一個運算式可用三種方式書寫，差別在<strong>運算子相對於運算元的位置</strong>：</p>
+      <table>
+        <thead><tr><th>表示法</th><th>運算子位置</th><th>範例（A + B）</th><th>需要括號/優先序？</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Infix 中序</strong></td><td>在兩運算元<strong>中間</strong></td><td class="mono">A + B</td><td>需要（人類習慣）</td></tr>
+          <tr><td><strong>Postfix 後序</strong>（逆波蘭 RPN）</td><td>在運算元<strong>之後</strong></td><td class="mono">A B +</td><td>不需要</td></tr>
+          <tr><td><strong>Prefix 前序</strong>（波蘭式）</td><td>在運算元<strong>之前</strong></td><td class="mono">+ A B</td><td>不需要</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:18px">較複雜的例子</h3>
+      <table>
+        <thead><tr><th>Infix</th><th>Postfix</th><th>Prefix</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">A + B * C</td><td class="mono">A B C * +</td><td class="mono">+ A * B C</td></tr>
+          <tr><td class="mono">(A + B) * C</td><td class="mono">A B + C *</td><td class="mono">* + A B C</td></tr>
+          <tr><td class="mono">A + B * C - D / E</td><td class="mono">A B C * + D E / -</td><td class="mono">- + A * B C / D E</td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:14px; color:var(--muted)">
+        <strong>為什麼要 Postfix/Prefix？</strong>
+        因為它們<strong>不需要括號與運算子優先序規則</strong>，電腦只要一個 stack 就能直接、明確地求值，
+        非常適合機器處理。中序則符合人類閱讀習慣。
+      </p>
+    </div>
+  </section>
+
+  <!-- 5. 中序轉後序 動畫 -->
+  <section>
+    <h2>5. 圖解：中序 → 後序（Shunting Yard，用 Stack）</h2>
+    <div class="card">
+      <div class="controls">
+        <input type="text" id="exprInput" value="A + B * C - D / E" style="min-width:260px" />
+        <button onclick="loadExpr()">載入</button>
+        <button id="stepBtn" onclick="stepConv()">下一步 ▶</button>
+        <button onclick="playConv()">自動播放 ⏩</button>
+        <button onclick="loadExpr()">重置</button>
+      </div>
+
+      <div class="label-mini">輸入 tokens（黃色為目前處理）：</div>
+      <div class="tokens" id="tokenRow"></div>
+
+      <div class="conv">
+        <div>
+          <div class="label-mini" style="margin-top:14px">輸出（Output / 後序式）：</div>
+          <div class="out-line" id="outLine"></div>
+          <div class="label-mini" style="margin-top:14px">說明：</div>
+          <div class="desc" id="descLine">按「下一步」開始</div>
+        </div>
+        <div>
+          <div class="label-mini">運算子堆疊 (op stack)</div>
+          <div class="op-stack" id="opStack"></div>
+        </div>
+      </div>
+
+      <details style="margin-top:16px">
+        <summary style="cursor:pointer; color:var(--accent)">演算法規則（Shunting Yard）</summary>
+        <ul style="color:var(--muted)">
+          <li>運算元 → 直接輸出。</li>
+          <li>運算子 → 當 stack 頂端運算子優先序 ≥ 目前運算子時，持續 pop 輸出，再 push 目前運算子。</li>
+          <li>左括號 <code>(</code> → push。</li>
+          <li>右括號 <code>)</code> → 持續 pop 輸出直到遇到 <code>(</code>，丟棄該對括號。</li>
+          <li>讀完後，把 stack 剩餘運算子全部 pop 輸出。</li>
+        </ul>
+      </details>
+    </div>
+  </section>
+
+  <!-- 6. 流程圖 with 動畫箭頭 -->
+  <section>
+    <h2>6. 流程圖（CSS 動畫箭頭顯示方向）</h2>
+    <div class="card">
+      <p style="color:var(--muted)">後序式 (postfix) 求值流程，箭頭動畫表示資料流動方向：</p>
+      <div class="flow">
+        <div class="node start">讀取 token</div>
+        <div class="arrow"></div>
+        <div class="node">是運算元？<br><small>push 入 stack</small></div>
+        <div class="arrow"></div>
+        <div class="node">是運算子？<br><small>pop 兩個運算元</small></div>
+        <div class="arrow"></div>
+        <div class="node">計算並<br>push 結果</div>
+        <div class="arrow"></div>
+        <div class="node end">stack 頂端<br>= 答案</div>
+      </div>
+      <p style="color:var(--muted); margin-top:18px">中序 → 後序的處理方向：</p>
+      <div class="flow">
+        <div class="node start">Infix<br><span class="mono">A + B * C</span></div>
+        <div class="arrow"></div>
+        <div class="node">Shunting Yard<br><small>＋ op stack</small></div>
+        <div class="arrow"></div>
+        <div class="node end">Postfix<br><span class="mono">A B C * +</span></div>
+      </div>
+    </div>
+  </section>
+
+  <footer style="margin-top:50px; color:var(--muted); font-size:.85rem; text-align:center">
+    資料結構教學 · Stack · 由 Template-Proj-Tauri-Menu 的 HTML viewer 載入
+  </footer>
+</div>
+
+<script>
+  /* ====== 互動式 Stack ====== */
+  const stack = [];
+  const box = document.getElementById("stackBox");
+  const topLabel = document.getElementById("topLabel");
+  const msg = document.getElementById("demoMsg");
+
+  function renderStack(highlightTop) {
+    box.innerHTML = "";
+    stack.forEach((v, i) => {
+      const el = document.createElement("div");
+      el.className = "stack-item" + (i === stack.length - 1 ? " top" : "");
+      el.textContent = v;
+      box.appendChild(el);
+    });
+    topLabel.textContent = stack.length
+      ? "top → " + stack[stack.length - 1]
+      : "top → （空）";
+    if (highlightTop && stack.length) {
+      box.lastChild.style.transform = "scale(1.08)";
+      setTimeout(() => { if (box.lastChild) box.lastChild.style.transform = ""; }, 300);
+    }
+  }
+  function doPush() {
+    const input = document.getElementById("pushVal");
+    const v = (input.value || "").trim();
+    if (!v) { flash("請先輸入值"); return; }
+    if (stack.length >= 8) { flash("已達示範上限 (8)"); return; }
+    stack.push(v); input.value = ""; renderStack();
+    flash("push(" + v + ")");
+  }
+  function doPop() {
+    if (!stack.length) { flash("⚠ underflow：堆疊已空"); return; }
+    const v = stack.pop(); renderStack();
+    flash("pop() → " + v);
+  }
+  function doPeek() {
+    if (!stack.length) { flash("堆疊為空"); return; }
+    flash("peek() → " + stack[stack.length - 1]); renderStack(true);
+  }
+  function resetStack() { stack.length = 0; renderStack(); flash("已清空"); }
+  function flash(t) { msg.textContent = t; }
+  renderStack();
+
+  /* ====== 中序轉後序（Shunting Yard）步驟動畫 ====== */
+  const prec = { "+": 1, "-": 1, "*": 2, "/": 2, "^": 3 };
+  const rightAssoc = { "^": true };
+  let steps = [], stepIdx = 0, playTimer = null, toks = [];
+
+  function tokenize(s) {
+    return s.replace(/\s+/g, "").split("").filter(Boolean);
+  }
+  function buildSteps(expr) {
+    const tokens = tokenize(expr);
+    const out = [], op = [], rec = [];
+    const snap = (active, desc) => rec.push({
+      active, desc,
+      out: out.join(" "),
+      op: op.slice(),
+    });
+    snap(-1, "開始");
+    tokens.forEach((t, i) => {
+      if (/[A-Za-z0-9]/.test(t)) {
+        out.push(t);
+        snap(i, "運算元 " + t + " → 直接輸出");
+      } else if (t === "(") {
+        op.push(t); snap(i, "左括號 → push");
+      } else if (t === ")") {
+        while (op.length && op[op.length - 1] !== "(") out.push(op.pop());
+        op.pop();
+        snap(i, "右括號 → pop 到左括號為止");
+      } else if (t in prec) {
+        while (
+          op.length && op[op.length - 1] !== "(" &&
+          (prec[op[op.length - 1]] > prec[t] ||
+           (prec[op[op.length - 1]] === prec[t] && !rightAssoc[t]))
+        ) out.push(op.pop());
+        op.push(t);
+        snap(i, "運算子 " + t + " → 先 pop 較高/相等優先序，再 push");
+      }
+    });
+    while (op.length) out.push(op.pop());
+    snap(-1, "讀完：pop 剩餘運算子 → 完成！後序式 = " + out.join(" "));
+    return { tokens, rec };
+  }
+  function loadExpr() {
+    if (playTimer) { clearInterval(playTimer); playTimer = null; }
+    const expr = document.getElementById("exprInput").value || "A + B * C";
+    const r = buildSteps(expr);
+    toks = r.tokens; steps = r.rec; stepIdx = 0;
+    renderTokens(-1); renderStep();
+    document.getElementById("stepBtn").disabled = false;
+  }
+  function renderTokens(active) {
+    const row = document.getElementById("tokenRow");
+    row.innerHTML = "";
+    toks.forEach((t, i) => {
+      const el = document.createElement("span");
+      el.className = "token" + (i === active ? " active" : (active > i || (active === -1 && stepIdx >= steps.length - 1) ? " done" : ""));
+      el.textContent = t;
+      row.appendChild(el);
+    });
+  }
+  function renderStep() {
+    const s = steps[stepIdx];
+    if (!s) return;
+    renderTokens(s.active);
+    document.getElementById("outLine").textContent = s.out || "（空）";
+    document.getElementById("descLine").textContent = s.desc;
+    const ops = document.getElementById("opStack");
+    ops.innerHTML = "";
+    s.op.forEach((o) => {
+      const el = document.createElement("div");
+      el.className = "stack-item"; el.textContent = o;
+      ops.appendChild(el);
+    });
+  }
+  function stepConv() {
+    if (!steps.length) loadExpr();
+    if (stepIdx < steps.length - 1) { stepIdx++; renderStep(); }
+    if (stepIdx >= steps.length - 1) document.getElementById("stepBtn").disabled = true;
+  }
+  function playConv() {
+    if (!steps.length) loadExpr();
+    if (playTimer) { clearInterval(playTimer); playTimer = null; return; }
+    playTimer = setInterval(() => {
+      if (stepIdx >= steps.length - 1) { clearInterval(playTimer); playTimer = null; return; }
+      stepConv();
+    }, 900);
+  }
+  loadExpr();
+</script>
+</body>
+</html>
