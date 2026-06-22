@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/Plans/fn-menu-makdown.md",
+                "file": "docs/Plans/dos-powershell。.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "fn-menu-makdown"
+              "title": "dos-powershell。"
             }
           }
         ],
@@ -109,7 +109,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "docs/Plans/fn-menu-makdown.md",
+                "file": "docs/Plans/dos-powershell。.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -119,7 +119,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "fn-menu-makdown 的反向連結"
+              "title": "dos-powershell。 的反向連結"
             }
           },
           {
@@ -128,12 +128,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "docs/Plans/fn-menu-makdown.md",
+                "file": "docs/Plans/dos-powershell。.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "fn-menu-makdown 的對外連結"
+              "title": "dos-powershell。 的對外連結"
             }
           },
           {
@@ -171,13 +171,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "docs/Plans/fn-menu-makdown.md",
+                "file": "docs/Plans/dos-powershell。.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "fn-menu-makdown 的大綱"
+              "title": "dos-powershell。 的大綱"
             }
           }
         ]
@@ -200,10 +200,21 @@
   },
   "active": "7863bf11563e9f3e",
   "lastOpenFiles": [
-    "docs/Plans/Tauri 設定 Icon.md",
+    "src-tauri/target/debug/deps/tauri_app.pdb",
+    "src-tauri/target/debug/deps/tauri_app.exe",
+    "src-tauri/target/debug/incremental/tauri_app-2jml8qtxo0tir/s-hjphounyf0-0q0nxwg-9pgcy0hwf2vf6ombfxlnky7c1/work-products.bin",
+    "src-tauri/target/debug/incremental/tauri_app-2jml8qtxo0tir/s-hjphounyf0-0q0nxwg-9pgcy0hwf2vf6ombfxlnky7c1/query-cache.bin",
+    "src-tauri/target/debug/incremental/tauri_app-2jml8qtxo0tir/s-hjphounyf0-0q0nxwg-9pgcy0hwf2vf6ombfxlnky7c1/9ejubufxkzofxnp1rbdlmwl7m.o",
+    "src-tauri/target/debug/incremental/tauri_app-2jml8qtxo0tir/s-hjphounyf0-0q0nxwg-9pgcy0hwf2vf6ombfxlnky7c1/erwg34bu9kufe9wspq2hah9uw.o",
+    "src-tauri/target/debug/incremental/tauri_app-2jml8qtxo0tir/s-hjphounyf0-0q0nxwg-9pgcy0hwf2vf6ombfxlnky7c1/dep-graph.bin",
+    "src-tauri/target/debug/incremental/tauri_app-2jml8qtxo0tir/s-hjphounyf0-0q0nxwg-9pgcy0hwf2vf6ombfxlnky7c1/a15ojeb85lo6kywsq3k93sit4.o",
+    "src-tauri/target/debug/incremental/tauri_app-2jml8qtxo0tir/s-hjphounyf0-0q0nxwg-9pgcy0hwf2vf6ombfxlnky7c1/8mrikzdk9dt8i686emp9zti8s.o",
+    "src-tauri/target/debug/incremental/tauri_app-2jml8qtxo0tir/s-hjphounyf0-0q0nxwg-9pgcy0hwf2vf6ombfxlnky7c1/3qy7urt1uazbh0gtn7xzoja2z.o",
+    "src-tauri/target/debug/incremental/tauri_app-2jml8qtxo0tir/s-hjphounyf0-0q0nxwg-9pgcy0hwf2vf6ombfxlnky7c1",
+    "docs/plan-markdown.md",
+    "docs/Plans/dos-powershell。.md",
     "docs/Plans/fn-menu-makdown.md",
-    "docs/Prompts",
-    "docs/Plans/setup-menu.md",
-    "docs/Plans"
+    "docs/Plans/Tauri 設定 Icon.md",
+    "docs/Plans/setup-menu.md"
   ]
 }

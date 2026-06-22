@@ -1,5 +1,5 @@
 
-# 任務
+# 功能
 
 1.左側 LeftPanel : FileTree 顯示 路徑下的檔案路徑與檔案。
 2.右側 RightPanel : 顯示 markdown 文件
