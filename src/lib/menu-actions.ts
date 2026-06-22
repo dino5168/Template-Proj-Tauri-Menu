@@ -1,5 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { MenuActionId } from "@/config/menu";
+import { toggleTheme } from "@/lib/theme";
 
 /**
  * action id → handler 對照表。
@@ -22,4 +23,11 @@ export const menuActions: Record<MenuActionId, () => void> = {
     void getCurrentWindow()
       .isFullscreen()
       .then((on) => getCurrentWindow().setFullscreen(!on)),
+  "view.theme": () => toggleTheme(),
+  "doc.markdown": () => {
+    // TODO: 開啟 / 顯示 Markdown 文件
+  },
+  "doc.html": () => {
+    // TODO: 開啟 / 顯示 HTML 文件
+  },
 };

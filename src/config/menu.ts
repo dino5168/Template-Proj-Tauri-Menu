@@ -10,6 +10,10 @@ import {
   File,
   SquarePen,
   Eye,
+  SunMoon,
+  Files,
+  FileText,
+  Code,
 } from "lucide-react";
 
 /** 選單項目的 action 識別碼；對應 menu-actions.ts 的 dispatch table。 */
@@ -20,7 +24,10 @@ export type MenuActionId =
   | "edit.undo"
   | "edit.redo"
   | "view.refresh"
-  | "view.fullscreen";
+  | "view.fullscreen"
+  | "view.theme"
+  | "doc.markdown"
+  | "doc.html";
 
 /** 可點擊的一般項目。 */
 interface MenuActionItem {
@@ -79,6 +86,16 @@ export const menuConfig: MenuGroup[] = [
     items: [
       { kind: "item", label: "重新整理", action: "view.refresh", icon: RefreshCw },
       { kind: "item", label: "全螢幕", action: "view.fullscreen", icon: Maximize },
+      { kind: "separator" },
+      { kind: "item", label: "切換深/淺色", action: "view.theme", icon: SunMoon },
+    ],
+  },
+  {
+    label: "文件",
+    icon: Files,
+    items: [
+      { kind: "item", label: "Markdown", action: "doc.markdown", icon: FileText },
+      { kind: "item", label: "HTML", action: "doc.html", icon: Code },
     ],
   },
 ];
