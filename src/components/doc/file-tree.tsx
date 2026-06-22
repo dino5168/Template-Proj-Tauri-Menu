@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { ChevronRight, Folder, FolderOpen, FileText } from "lucide-react";
+import {
+  ChevronRight,
+  Folder,
+  FolderOpen,
+  FileText,
+  type LucideIcon,
+} from "lucide-react";
 import type { FileNode } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 
@@ -8,12 +14,19 @@ interface FileTreeProps {
   root: FileNode;
   /** 目前選取的檔案路徑（高亮用）。 */
   selectedPath: string | null;
-  /** 點擊 markdown 檔時回呼其絕對路徑。 */
+  /** 點擊檔案時回呼其絕對路徑。 */
   onSelect: (path: string) => void;
+  /** 檔案項目的圖示；預設 FileText。 */
+  fileIcon?: LucideIcon;
 }
 
-/** 檔案樹：資料夾可展開/收合，markdown 檔可點擊預覽。 */
-export function FileTree({ root, selectedPath, onSelect }: FileTreeProps) {
+/** 檔案樹：資料夾可展開/收合，檔案可點擊。 */
+export function FileTree({
+  root,
+  selectedPath,
+  onSelect,
+  fileIcon = FileText,
+}: FileTreeProps) {
   return (
     <ul className="py-1 text-sm">
       {(root.children ?? []).map((child) => (
@@ -23,6 +36,7 @@ export function FileTree({ root, selectedPath, onSelect }: FileTreeProps) {
           depth={0}
           selectedPath={selectedPath}
           onSelect={onSelect}
+          fileIcon={fileIcon}
         />
       ))}
     </ul>
@@ -34,9 +48,10 @@ interface TreeNodeProps {
   depth: number;
   selectedPath: string | null;
   onSelect: (path: string) => void;
+  fileIcon: LucideIcon;
 }
 
-function TreeNode({ node, depth, selectedPath, onSelect }: TreeNodeProps) {
+function TreeNode({ node, depth, selectedPath, onSelect, fileIcon }: TreeNodeProps) {
   const [expanded, setExpanded] = useState(false);
   const isSelected = !node.isDir && node.path === selectedPath;
   // 縮排：每層 12px，基底 8px
@@ -74,6 +89,7 @@ function TreeNode({ node, depth, selectedPath, onSelect }: TreeNodeProps) {
                 depth={depth + 1}
                 selectedPath={selectedPath}
                 onSelect={onSelect}
+                fileIcon={fileIcon}
               />
             ))}
           </ul>
@@ -82,6 +98,7 @@ function TreeNode({ node, depth, selectedPath, onSelect }: TreeNodeProps) {
     );
   }
 
+  const FileIcon = fileIcon;
   return (
     <li>
       <button
@@ -93,7 +110,7 @@ function TreeNode({ node, depth, selectedPath, onSelect }: TreeNodeProps) {
           isSelected && "bg-accent text-accent-foreground",
         )}
       >
-        <FileText className="size-4 shrink-0 text-muted-foreground" />
+        <FileIcon className="size-4 shrink-0 text-muted-foreground" />
         <span className="truncate">{node.name}</span>
       </button>
     </li>

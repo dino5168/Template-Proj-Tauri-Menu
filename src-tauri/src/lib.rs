@@ -80,20 +80,20 @@ fn read_markdown(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
-/// 嘗試找出預設 docs 根目錄；找不到回傳空字串（前端再請使用者選）。
+/// 嘗試找出名為 `name` 的預設根目錄；找不到回傳空字串（前端再請使用者選）。
 ///
-/// 依序檢查：cwd/docs、cwd/../docs（涵蓋 `tauri dev` cwd=src-tauri）、
-/// 執行檔同層 /docs。
+/// 依序檢查：cwd/{name}、cwd/../{name}（涵蓋 `tauri dev` cwd=src-tauri）、
+/// 執行檔同層 /{name}。
 #[tauri::command]
-fn default_docs_dir() -> String {
+fn default_dir(name: String) -> String {
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Ok(cwd) = std::env::current_dir() {
-        candidates.push(cwd.join("docs"));
-        candidates.push(cwd.join("..").join("docs"));
+        candidates.push(cwd.join(&name));
+        candidates.push(cwd.join("..").join(&name));
     }
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            candidates.push(dir.join("docs"));
+            candidates.push(dir.join(&name));
         }
     }
     candidates
@@ -117,7 +117,7 @@ pub fn run() {
             greet,
             list_dir,
             read_markdown,
-            default_docs_dir
+            default_dir
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -45,7 +45,7 @@ export async function readMarkdown(path: string): Promise<Result<string>> {
   }
 }
 
-/** 取得預設 docs 根目錄；找不到回傳空字串。 */
-export async function defaultDocsDir(): Promise<string> {
-  return invoke<string>("default_docs_dir");
+/** 取得名為 name 的預設根目錄（如 "docs" / "htmls"）；找不到回傳空字串。 */
+export async function defaultDir(name: string): Promise<string> {
+  return invoke<string>("default_dir", { name });
 }
