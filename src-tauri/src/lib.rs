@@ -18,19 +18,19 @@ struct FileNode {
     children: Option<Vec<FileNode>>,
 }
 
-/// 是否為 markdown 副檔名（.md / .markdown，不分大小寫）。
-fn is_markdown(path: &Path) -> bool {
+/// 副檔名是否在允許清單內（不分大小寫）。
+fn has_ext(path: &Path, exts: &[String]) -> bool {
     match path.extension().and_then(|e| e.to_str()) {
         Some(ext) => {
             let ext = ext.to_lowercase();
-            ext == "md" || ext == "markdown"
+            exts.iter().any(|e| e == &ext)
         }
         None => false,
     }
 }
 
-/// 遞迴建立目錄樹：只保留「資料夾」與「.md 檔」，資料夾優先、依名稱排序。
-fn build_tree(path: &Path) -> std::io::Result<FileNode> {
+/// 遞迴建立目錄樹：只保留「資料夾」與符合 `exts` 的檔案，資料夾優先、依名稱排序。
+fn build_tree(path: &Path, exts: &[String]) -> std::io::Result<FileNode> {
     let is_dir = path.is_dir();
     let name = path
         .file_name()
@@ -41,8 +41,8 @@ fn build_tree(path: &Path) -> std::io::Result<FileNode> {
         let mut nodes: Vec<FileNode> = Vec::new();
         for entry in std::fs::read_dir(path)? {
             let child = entry?.path();
-            if child.is_dir() || is_markdown(&child) {
-                nodes.push(build_tree(&child)?);
+            if child.is_dir() || has_ext(&child, exts) {
+                nodes.push(build_tree(&child, exts)?);
             }
         }
         // 資料夾優先，再依名稱（不分大小寫）排序
@@ -64,14 +64,14 @@ fn build_tree(path: &Path) -> std::io::Result<FileNode> {
     })
 }
 
-/// 讀取目錄樹（根目錄可為任意絕對路徑）；只含資料夾與 .md 檔。
+/// 讀取目錄樹（根目錄可為任意絕對路徑）；只含資料夾與符合 `exts` 的檔案。
 #[tauri::command]
-fn list_dir(root: String) -> Result<FileNode, String> {
+fn list_dir(root: String, exts: Vec<String>) -> Result<FileNode, String> {
     let path = Path::new(&root);
     if !path.is_dir() {
         return Err(format!("不是有效的資料夾：{root}"));
     }
-    build_tree(path).map_err(|e| e.to_string())
+    build_tree(path, &exts).map_err(|e| e.to_string())
 }
 
 /// 讀取單一 markdown 檔內容（UTF-8）。

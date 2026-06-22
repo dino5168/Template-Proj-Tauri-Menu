@@ -26,7 +26,5 @@ export const menuActions: Record<MenuActionId, () => void> = {
       .then((on) => getCurrentWindow().setFullscreen(!on)),
   "view.theme": () => toggleTheme(),
   "doc.markdown": () => setView("markdown"),
-  "doc.html": () => {
-    // TODO: 開啟 / 顯示 HTML 文件
-  },
+  "doc.html": () => setView("html"),
 };

@@ -8,12 +8,12 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { FileTree } from "@/components/markdown/file-tree";
-import { MarkdownPanel } from "@/components/markdown/markdown-panel";
-import { defaultDocsDir, listDir, MARKDOWN_EXTS, type FileNode } from "@/lib/tauri";
+import { HtmlPanel } from "@/components/html/html-panel";
+import { defaultDocsDir, listDir, HTML_EXTS, type FileNode } from "@/lib/tauri";
 import { setView } from "@/lib/view-store";
 
-/** Markdown 瀏覽器主畫面：工具列 + 可調分割（FileTree | 預覽）。 */
-export function MarkdownView() {
+/** HTML 瀏覽器主畫面：工具列 + 可調分割（FileTree | iframe 預覽）。 */
+export function HtmlView() {
   const [root, setRoot] = useState<string | null>(null);
   const [tree, setTree] = useState<FileNode | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export function MarkdownView() {
   }, []);
 
   async function loadRoot(dir: string): Promise<void> {
-    const res = await listDir(dir, MARKDOWN_EXTS);
+    const res = await listDir(dir, HTML_EXTS);
     if (res.error) {
       setError(res.error.message);
       setTree(null);
@@ -79,7 +79,7 @@ export function MarkdownView() {
                 />
               ) : (
                 <p className="p-3 text-sm text-muted-foreground">
-                  {error ?? "請點「開啟資料夾」選擇 Markdown 根目錄"}
+                  {error ?? "請點「開啟資料夾」選擇 HTML 根目錄"}
                 </p>
               )}
             </div>
@@ -88,7 +88,7 @@ export function MarkdownView() {
           <ResizableHandle withHandle />
 
           <ResizablePanel defaultSize={75} minSize={30}>
-            <MarkdownPanel path={selectedPath} onNavigate={setSelectedPath} />
+            <HtmlPanel path={selectedPath} />
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>

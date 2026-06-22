@@ -17,10 +17,20 @@ function toError(e: unknown): Error {
   return e instanceof Error ? e : new Error(String(e));
 }
 
-/** 讀取目錄樹（只含資料夾與 .md 檔）。 */
-export async function listDir(root: string): Promise<Result<FileNode>> {
+/** 常用副檔名清單（傳給 listDir 過濾）。 */
+export const MARKDOWN_EXTS = ["md", "markdown"];
+export const HTML_EXTS = ["html", "htm"];
+
+/** 讀取目錄樹（只含資料夾與符合 exts 的檔案）。 */
+export async function listDir(
+  root: string,
+  exts: string[],
+): Promise<Result<FileNode>> {
   try {
-    return { data: await invoke<FileNode>("list_dir", { root }), error: null };
+    return {
+      data: await invoke<FileNode>("list_dir", { root, exts }),
+      error: null,
+    };
   } catch (e) {
     return { data: null, error: toError(e) };
   }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { TitleBar } from "@/components/layout/title-bar";
 import { MarkdownView } from "@/components/markdown/markdown-view";
+import { HtmlView } from "@/components/html/html-view";
 import { Button } from "@/components/ui/button";
 import { useView } from "@/lib/view-store";
 
@@ -13,7 +14,13 @@ function App() {
       <TitleBar />
 
       <main className="min-h-0 flex-1">
-        {view === "markdown" ? <MarkdownView /> : <HomeView />}
+        {view === "markdown" ? (
+          <MarkdownView />
+        ) : view === "html" ? (
+          <HtmlView />
+        ) : (
+          <HomeView />
+        )}
       </main>
     </div>
   );
