@@ -23,7 +23,8 @@ export function AppMenubar({ config }: AppMenubarProps) {
     <Menubar className="h-auto gap-0 border-0 bg-transparent p-0 shadow-none">
       {config.map((group) => (
         <MenubarMenu key={group.label}>
-          <MenubarTrigger className="px-2 py-1 text-sm font-normal">
+          <MenubarTrigger className="gap-1.5 px-2 py-1 text-sm font-normal">
+            {group.icon && <group.icon className="size-4" />}
             {group.label}
           </MenubarTrigger>
           <MenubarContent>
