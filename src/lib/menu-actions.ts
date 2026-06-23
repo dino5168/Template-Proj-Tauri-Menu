@@ -10,9 +10,7 @@ import { setView } from "@/lib/view-store";
  * 新增行為只需在此補一筆。未實作者先留 no-op 或 TODO。
  */
 export const menuActions: Record<MenuActionId, () => void> = {
-  "file.new": () => {
-    // TODO: 開新檔案
-  },
+  "file.new": () => setView("editor"),
   "file.open": () => {
     // TODO: 開啟檔案
   },

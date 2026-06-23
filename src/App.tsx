@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { TitleBar } from "@/components/layout/title-bar";
 import { MarkdownView } from "@/components/markdown/markdown-view";
 import { HtmlView } from "@/components/html/html-view";
+import { MarkdownEditorView } from "@/components/editor/markdown-editor-view";
 import { Button } from "@/components/ui/button";
 import { useView } from "@/lib/view-store";
 
@@ -18,6 +19,8 @@ function App() {
           <MarkdownView />
         ) : view === "html" ? (
           <HtmlView />
+        ) : view === "editor" ? (
+          <MarkdownEditorView />
         ) : (
           <HomeView />
         )}

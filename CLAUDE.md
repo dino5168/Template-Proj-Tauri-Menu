@@ -5,6 +5,9 @@
 
 > 建置步驟與 rationale 見 `setup.md`；選單外部化見 `docs/plan-markdown.md`、`docs/plan-html.md`。
 
+> **巢狀 CLAUDE.md**：各子系統另有就近的工作層說明（含眉角與擴充步驟），在該目錄工作時會被載入——
+> `src-tauri/`、`src/lib/`、`src/config/`、`src/components/{layout,doc,editor}/`。本檔保持架構地圖，細節在子檔。
+
 ---
 
 ## 常用指令
@@ -42,7 +45,7 @@ pnpm tauri icon <方形圖>                     # 重生整套 app icon（見「
 - 新增選單項目 = 改這兩個檔（加 `MenuActionId` + config 項目 + handler），不動元件。
 
 ### 視圖切換 + 主題
-- `src/lib/view-store.ts`：極輕量 store（`useSyncExternalStore`），`View = "home" | "markdown" | "html"`。menu action 用 `setView()`、元件用 `useView()`。`App.tsx` 依此切換 `<main>`。
+- `src/lib/view-store.ts`：極輕量 store（`useSyncExternalStore`），`View = "home" | "markdown" | "html" | "editor"`。menu action 用 `setView()`、元件用 `useView()`。`App.tsx` 依此切換 `<main>`。
 - `src/lib/theme.ts`：亮/暗切換（切 `<html>.dark`、`localStorage` 持久化、未選過跟隨系統）。`main.tsx` 於 render 前呼叫 `initTheme()` 防 FOUC。選單「檢視 → 切換深/淺色」觸發。
 
 ### 文件瀏覽器（Markdown / HTML）
@@ -50,6 +53,14 @@ pnpm tauri icon <方形圖>                     # 重生整套 app icon（見「
 - `MarkdownView`：`MARKDOWN_EXTS`、預設目錄 `docs`、icon `FileText`、預覽 `MarkdownPanel`（react-markdown + remark-gfm + rehype-highlight；相對圖片走 `convertFileSrc`、相對 .md 連結樹內導航）。
 - `HtmlView`：`HTML_EXTS`、預設目錄 `htmls`、icon `FileCode`、預覽 `HtmlPanel`（iframe + asset protocol，`sandbox="allow-same-origin allow-scripts"`）。
 - `FileTree`（`components/doc/file-tree.tsx`）為泛型，吃 `fileIcon` prop。
+
+### Markdown 編輯器（開新檔案 / Live Preview）
+選單「檔案 → 開新檔案」(`file.new`) → `setView("editor")`，主視圖為 Obsidian 式 Live Preview 編輯器（`components/editor/`）：
+- `markdown-editor-view.tsx`：殼 = `EditorToolbar` + `MarkdownEditor`。
+- `markdown-editor.tsx`：封裝 **milkdown Crepe**（ProseMirror，含 commonmark + gfm），`forwardRef` 暴露 `{ run(id), getMarkdown() }`；`commandRunners` 為 `EditorCommandId → callCommand` dispatch table（與工具列解耦）。清單 / Tab 縮排 / Enter 自動延續清單由 Crepe 內建。
+- `editor-toolbar.tsx`：data-driven 工具列 config（icon + label + `EditorCommandId`），presentational，點擊 `onMouseDown.preventDefault()` 保住選取。
+- 主題：Crepe 自帶 `theme/common` + `theme/frame`，但 `index.css` 用 `.milkdown.milkdown` 把 `--crepe-color-*` 重新對應到專案 shadcn tokens，**自動跟隨明暗主題**（不載入 Crepe 的 dark 主題）。
+- 目前為**純編輯**（內容存記憶體，尚無存檔）；未來存檔需新增 Rust `write_file` command + dialog，見 `docs/Plans/imp-plan-newfile.md`。
 
 ### 樣式（Tailwind v4）
 - CSS-first，**無 `tailwind.config.js`**。入口 `src/index.css`：`@import "tailwindcss";`、`@plugin "@tailwindcss/typography";`、shadcn 的 `@theme` / `@custom-variant dark` / CSS variables。
@@ -74,7 +85,8 @@ src/
 │   ├── layout/        # title-bar, window-controls, app-menubar
 │   ├── doc/           # doc-browser, file-tree（Markdown/HTML 共用）
 │   ├── markdown/      # markdown-view（薄殼）, markdown-panel
-│   └── html/          # html-view（薄殼）, html-panel
+│   ├── html/          # html-view（薄殼）, html-panel
+│   └── editor/        # markdown-editor-view, markdown-editor（Crepe）, editor-toolbar
 ├── config/menu.ts     # 選單結構（data-driven）
 ├── lib/
 │   ├── utils.ts       # cn()
