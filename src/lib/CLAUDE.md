@@ -10,6 +10,7 @@
 | `view-store.ts` | 主視圖切換 | `useSyncExternalStore` 極輕量 store；`setView()`（非 React）/ `useView()`（元件） |
 | `theme.ts` | 亮/暗主題 | 切 `<html>.dark` + localStorage；無 React context |
 | `menu-actions.ts` | 選單 action dispatch | `Record<MenuActionId, () => void>`；與 `config/menu.ts` 配對（見 `src/config/CLAUDE.md`） |
+| `editor-store.ts` | editor 視圖狀態中樞 | 文件來源（`openDocument`/`newDocument`/`useEditorDocument`，`docId` 驅動 remount）+ 存檔取值橋接（`setActiveEditor`/`getActiveEditor`）；細節見 `src/components/editor/CLAUDE.md` |
 | `utils.ts` | `cn()` | className 合併 |
 
 ## tauri.ts — IPC 封裝鐵則

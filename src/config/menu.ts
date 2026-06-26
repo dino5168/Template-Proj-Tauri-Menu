@@ -2,6 +2,8 @@ import type { LucideIcon } from "lucide-react";
 import {
   FilePlus,
   FolderOpen,
+  Save,
+  SaveAll,
   LogOut,
   Undo2,
   Redo2,
@@ -22,6 +24,8 @@ import {
 export type MenuActionId =
   | "file.new"
   | "file.open"
+  | "file.save"
+  | "file.saveAs"
   | "file.exit"
   | "edit.undo"
   | "edit.redo"
@@ -71,6 +75,8 @@ export const menuConfig: MenuGroup[] = [
     items: [
       { kind: "item", label: "開新檔案", action: "file.new", icon: FilePlus, shortcut: "Ctrl+N" },
       { kind: "item", label: "開啟…", action: "file.open", icon: FolderOpen, shortcut: "Ctrl+O" },
+      { kind: "item", label: "儲存檔案", action: "file.save", icon: Save, shortcut: "Ctrl+S" },
+      { kind: "item", label: "另存新檔…", action: "file.saveAs", icon: SaveAll, shortcut: "Ctrl+Shift+S" },
       { kind: "separator" },
       { kind: "item", label: "結束", action: "file.exit", icon: LogOut, shortcut: "Alt+F4" },
     ],
@@ -105,7 +111,7 @@ export const menuConfig: MenuGroup[] = [
     label: "設定",
     icon: Settings,
     items: [
-      { kind: "item", label: "工作目錄", action: "settings.workdir", icon: FolderCog },
+      { kind: "item", label: "環境設定", action: "settings.workdir", icon: FolderCog },
     ],
   },
 ];

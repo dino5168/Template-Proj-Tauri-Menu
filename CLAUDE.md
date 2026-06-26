@@ -137,3 +137,4 @@ public/                # 靜態資源，根路徑取用（例：/deepseek-icon.s
 - `src/App.css` 已不再 import（改用 Tailwind），可刪。
 - `.obsidian/` 已 gitignore，不追蹤。
 - ⚠️ 在非空目錄執行 scaffolder 的 `--force` 會清檔，勿用（曾誤刪檔案）。
+- ⚠️ **`tauri dev` 下，在編輯器存檔到「被 Vite 監看的目錄」會觸發 HMR 整頁重載 → in-memory 的 view/編輯器狀態歸零「跳回首頁」**。`vite.config.ts` 的 `server.watch.ignored` 已排除 `docs/**`、`htmls/**`；若新增其他內容根目錄供開/存檔，記得一併加進去。正式 build 無此問題。
