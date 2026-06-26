@@ -25,4 +25,7 @@ export const menuActions: Record<MenuActionId, () => void> = {
   "view.theme": () => toggleTheme(),
   "doc.markdown": () => setView("markdown"),
   "doc.html": () => setView("html"),
+  "settings.workdir": () => {
+    // TODO: 設定工作目錄（後續接 dialog 選資料夾 + 持久化）
+  },
 };

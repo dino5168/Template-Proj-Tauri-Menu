@@ -14,6 +14,8 @@ import {
   Files,
   FileText,
   Code,
+  Settings,
+  FolderCog,
 } from "lucide-react";
 
 /** 選單項目的 action 識別碼；對應 menu-actions.ts 的 dispatch table。 */
@@ -27,7 +29,8 @@ export type MenuActionId =
   | "view.fullscreen"
   | "view.theme"
   | "doc.markdown"
-  | "doc.html";
+  | "doc.html"
+  | "settings.workdir";
 
 /** 可點擊的一般項目。 */
 interface MenuActionItem {
@@ -96,6 +99,13 @@ export const menuConfig: MenuGroup[] = [
     items: [
       { kind: "item", label: "Markdown", action: "doc.markdown", icon: FileText },
       { kind: "item", label: "HTML", action: "doc.html", icon: Code },
+    ],
+  },
+  {
+    label: "設定",
+    icon: Settings,
+    items: [
+      { kind: "item", label: "工作目錄", action: "settings.workdir", icon: FolderCog },
     ],
   },
 ];
