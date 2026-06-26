@@ -45,6 +45,18 @@ export async function readMarkdown(path: string): Promise<Result<string>> {
   }
 }
 
+/** 將內容寫入指定路徑（覆蓋既有檔）。 */
+export async function writeFile(
+  path: string,
+  contents: string,
+): Promise<Result<void>> {
+  try {
+    return { data: await invoke<void>("write_file", { path, contents }), error: null };
+  } catch (e) {
+    return { data: null, error: toError(e) };
+  }
+}
+
 /** 取得名為 name 的預設根目錄（如 "docs" / "htmls"）；找不到回傳空字串。 */
 export async function defaultDir(name: string): Promise<string> {
   return invoke<string>("default_dir", { name });

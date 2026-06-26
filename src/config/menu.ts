@@ -2,6 +2,8 @@ import type { LucideIcon } from "lucide-react";
 import {
   FilePlus,
   FolderOpen,
+  Save,
+  SaveAll,
   LogOut,
   Undo2,
   Redo2,
@@ -14,12 +16,16 @@ import {
   Files,
   FileText,
   Code,
+  Settings,
+  FolderCog,
 } from "lucide-react";
 
 /** 選單項目的 action 識別碼；對應 menu-actions.ts 的 dispatch table。 */
 export type MenuActionId =
   | "file.new"
   | "file.open"
+  | "file.save"
+  | "file.saveAs"
   | "file.exit"
   | "edit.undo"
   | "edit.redo"
@@ -27,7 +33,8 @@ export type MenuActionId =
   | "view.fullscreen"
   | "view.theme"
   | "doc.markdown"
-  | "doc.html";
+  | "doc.html"
+  | "settings.workdir";
 
 /** 可點擊的一般項目。 */
 interface MenuActionItem {
@@ -68,6 +75,8 @@ export const menuConfig: MenuGroup[] = [
     items: [
       { kind: "item", label: "開新檔案", action: "file.new", icon: FilePlus, shortcut: "Ctrl+N" },
       { kind: "item", label: "開啟…", action: "file.open", icon: FolderOpen, shortcut: "Ctrl+O" },
+      { kind: "item", label: "儲存檔案", action: "file.save", icon: Save, shortcut: "Ctrl+S" },
+      { kind: "item", label: "另存新檔…", action: "file.saveAs", icon: SaveAll, shortcut: "Ctrl+Shift+S" },
       { kind: "separator" },
       { kind: "item", label: "結束", action: "file.exit", icon: LogOut, shortcut: "Alt+F4" },
     ],
@@ -96,6 +105,13 @@ export const menuConfig: MenuGroup[] = [
     items: [
       { kind: "item", label: "Markdown", action: "doc.markdown", icon: FileText },
       { kind: "item", label: "HTML", action: "doc.html", icon: Code },
+    ],
+  },
+  {
+    label: "設定",
+    icon: Settings,
+    items: [
+      { kind: "item", label: "環境設定", action: "settings.workdir", icon: FolderCog },
     ],
   },
 ];

@@ -80,6 +80,15 @@ fn read_markdown(path: String) -> Result<String, String> {
     std::fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
+/// 將 UTF-8 內容寫入指定路徑（覆蓋既有檔）。
+///
+/// 路徑由前端 save dialog 產生（使用者明示選定），故不在此額外做目錄白名單；
+/// 寫檔失敗（權限、唯讀等）以 `Err` 字串回傳前端。
+#[tauri::command]
+fn write_file(path: String, contents: String) -> Result<(), String> {
+    std::fs::write(&path, contents).map_err(|e| e.to_string())
+}
+
 /// 嘗試找出名為 `name` 的預設根目錄；找不到回傳空字串（前端再請使用者選）。
 ///
 /// 依序檢查：cwd/{name}、cwd/../{name}（涵蓋 `tauri dev` cwd=src-tauri）、
@@ -117,6 +126,7 @@ pub fn run() {
             greet,
             list_dir,
             read_markdown,
+            write_file,
             default_dir
         ])
         .run(tauri::generate_context!())

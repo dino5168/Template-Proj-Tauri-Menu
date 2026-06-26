@@ -31,6 +31,7 @@
 - `cargo check`（在 `src-tauri/` 內）：驗 commands + tauri.conf + capabilities 權限字串，比跑整個 `tauri dev` 快。
 - 換 icon 後 `icon.ico` 經 `build.rs` 嵌入 exe，cargo 可能不偵測變更 → `touch build.rs` 再重編。
 
-## 目前未實作（已知缺口）
+## 存檔（write_file）
 
-- 無 `write_file`：編輯器（開新檔案）為純編輯不存檔。要加存檔時在此新增 `write_file(path, contents)` + 註冊 + 前端封裝，見 `docs/Plans/imp-plan-newfile.md`。
+- `write_file(path, contents)`（`std::fs::write`，已註冊）供編輯器「儲存檔案」(`file.save`) 使用；前端封裝在 `src/lib/tauri.ts` 的 `writeFile`，存檔對話框用 `dialog:allow-save` 權限。設計見 `docs/Plans/Save-file.md`。
+- 路徑由前端 save dialog 產生（使用者明示選定），故 command 內不另做目錄白名單；寫檔失敗以 `Err` 回傳。
