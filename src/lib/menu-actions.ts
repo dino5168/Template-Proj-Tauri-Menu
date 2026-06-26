@@ -11,6 +11,7 @@ import {
   openDocument,
   setCurrentPath,
 } from "@/lib/editor-store";
+import { getWorkdir, setWorkdir } from "@/lib/workdir-store";
 import { MARKDOWN_EXTS, readMarkdown, writeFile } from "@/lib/tauri";
 
 /** Windows 不合法的檔名字元（含控制字元）。 */
@@ -30,6 +31,19 @@ function defaultFilename(md: string): string {
 }
 
 /**
+ * 把檔名接到目錄後面，組成存檔對話框的預設完整路徑。
+ *
+ * 分隔符依目錄既有字元推斷（Windows 路徑含 `\`），避免為了 join 走 IPC／權限。
+ *
+ * @param dir - 工作目錄絕對路徑（來自 OS 選資料夾器）。
+ * @param name - 含副檔名的檔名。
+ */
+function joinPath(dir: string, name: string): string {
+  const sep = dir.includes("\\") ? "\\" : "/";
+  return `${dir.replace(/[\\/]+$/, "")}${sep}${name}`;
+}
+
+/**
  * 開啟既有 Markdown 檔到編輯器：選檔 → 讀檔 → 注入 editor-store → 切視圖。
  *
  * 使用者取消對話框或讀檔失敗時，靜默結束、不切視圖。
@@ -38,6 +52,7 @@ async function openFile(): Promise<void> {
   const path = await open({
     multiple: false,
     directory: false,
+    defaultPath: getWorkdir() ?? undefined, // 從工作目錄起始
     filters: [{ name: "Markdown", extensions: MARKDOWN_EXTS }],
   });
   if (typeof path !== "string") return; // 使用者取消
@@ -62,8 +77,11 @@ async function saveAsActiveEditor(): Promise<void> {
   if (!getMarkdown) return; // 不在編輯器視圖
 
   const md = getMarkdown();
+  // 預設檔名取 H1 標題；有工作目錄則以其為起始路徑。
+  const name = `${defaultFilename(md)}.md`;
+  const dir = getWorkdir();
   const path = await save({
-    defaultPath: `${defaultFilename(md)}.md`,
+    defaultPath: dir ? joinPath(dir, name) : name,
     filters: [{ name: "Markdown", extensions: ["md", "markdown"] }],
   });
   if (path === null) return; // 使用者取消
@@ -74,6 +92,22 @@ async function saveAsActiveEditor(): Promise<void> {
     return;
   }
   setCurrentPath(path); // 之後「儲存檔案」即覆蓋此檔
+}
+
+/**
+ * 選取並持久化工作目錄（「設定 → 環境設定」）。
+ *
+ * 之後編輯器的開檔／存檔對話框會以此為預設起始位置（見 workdir-store）。
+ * 使用者取消時不變更現有設定。
+ */
+async function pickWorkdir(): Promise<void> {
+  const dir = await open({
+    directory: true,
+    multiple: false,
+    defaultPath: getWorkdir() ?? undefined,
+  });
+  if (typeof dir !== "string") return; // 使用者取消
+  setWorkdir(dir);
 }
 
 /**
@@ -124,7 +158,5 @@ export const menuActions: Record<MenuActionId, () => void> = {
   "view.theme": () => toggleTheme(),
   "doc.markdown": () => setView("markdown"),
   "doc.html": () => setView("html"),
-  "settings.workdir": () => {
-    // TODO: 設定工作目錄（後續接 dialog 選資料夾 + 持久化）
-  },
+  "settings.workdir": () => void pickWorkdir(),
 };
