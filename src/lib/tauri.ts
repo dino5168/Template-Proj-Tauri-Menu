@@ -98,23 +98,68 @@ export async function readTextFile(path: string): Promise<Result<string>> {
   }
 }
 
+/** 影片資料夾的內容與 metadata（對應 Rust VideoInfo，camelCase）。 */
+export interface VideoInfo {
+  id: string;
+  url: string;
+  title: string | null;
+  channel: string | null;
+  duration: number | null;
+  uploadDate: string | null;
+  folderPath: string;
+  subtitlePath: string | null;
+  thumbnailPath: string | null;
+  audioPath: string | null;
+}
+
 /**
- * 確保影片字幕存在於 `<dataRoot>/subtitles/` 並回傳 srt 絕對路徑。
+ * 在 `<dataRoot>/videos/<id>/` 準備影片資料（字幕 en.srt、封面 cover.jpg、info.json）。
  *
- * 已快取則跳過下載；否則以 yt-dlp 下載（手動優先、無則自動）。影片無英文字幕、
- * 或找不到 yt-dlp 時以 error 回傳。
+ * 已快取則跳過 yt-dlp。無字幕時 `subtitlePath` 為 null（非 error）；找不到 yt-dlp 等
+ * 才以 error 回傳。需 PATH 上的 yt-dlp 與 ffmpeg。
  */
-export async function downloadSubtitle(
+export async function prepareVideo(
   url: string,
   videoId: string,
   dataRoot: string,
-  lang: string,
+): Promise<Result<VideoInfo>> {
+  try {
+    return {
+      data: await invoke<VideoInfo>("prepare_video", { url, videoId, dataRoot }),
+      error: null,
+    };
+  } catch (e) {
+    return { data: null, error: toError(e) };
+  }
+}
+
+/**
+ * 下載影片音訊為 `<dataRoot>/videos/<id>/audio.mp3`，回傳絕對路徑（已下載則直接回）。
+ *
+ * 由「下載音訊」鈕觸發（非每次換片自動）。需 PATH 上的 yt-dlp 與 ffmpeg。
+ */
+export async function downloadAudio(
+  url: string,
+  videoId: string,
+  dataRoot: string,
 ): Promise<Result<string>> {
   try {
     return {
-      data: await invoke<string>("download_subtitle", { url, videoId, dataRoot, lang }),
+      data: await invoke<string>("download_audio", { url, videoId, dataRoot }),
       error: null,
     };
+  } catch (e) {
+    return { data: null, error: toError(e) };
+  }
+}
+
+/** 寫入/更新一筆影片記錄到 `videos` 表（不存在則建表；以 id upsert）。 */
+export async function videosUpsert(
+  dbPath: string,
+  video: VideoInfo,
+): Promise<Result<void>> {
+  try {
+    return { data: await invoke<void>("videos_upsert", { dbPath, video }), error: null };
   } catch (e) {
     return { data: null, error: toError(e) };
   }

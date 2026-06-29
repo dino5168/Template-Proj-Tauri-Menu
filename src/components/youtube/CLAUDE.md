@@ -15,23 +15,31 @@ youtube-view.tsx          orchestrator：videoId/字幕/播放進度/seek 全在
 
 輸入 → `url-bar` 上拋原始字串 → `view` 用 `parseYouTubeId`（`src/lib/youtube.ts`）解析 → 有效則 `setVideoId`/`setUrl`、無效則 `setError`（顯示於 url-bar 下方）。
 
-## 字幕資料流（yt-dlp 下載 + 同步高亮）
+## 字幕／影片資料流（yt-dlp 下載 + 同步高亮 + 入庫）
 
 ```
 videoId/url 變更 → resolveDataRoot()（data-root-store）
-  → downloadSubtitle(url, videoId, dataRoot, "en")  ← Rust：有快取跳過、無則 yt-dlp
-     → readTextFile(srtPath) → parseSrt()（src/lib/srt.ts）→ setCues / status="ready"
+  → prepareVideo(url, videoId, dataRoot)  ← Rust：有快取跳過、無則 yt-dlp
+       一次抓 字幕(en.srt) + 封面(cover.jpg) + metadata(info.json) → VideoInfo
+  → videosUpsert(joinPath(dataRoot, DB_FILE_NAME), info)  ← 寫 videos 表（失敗只 log、不阻播放）
+  → info.subtitlePath 有值：readTextFile → parseSrt（src/lib/srt.ts）→ setCues/status="ready"
+     為 null（無字幕）：status="empty"（仍可播放）
 player onReady → 存 playerRef；onStateChange=PLAYING → 每 250ms getCurrentTime()
   → activeCueIndex(cues, t) → 高亮 + 自動捲動
 點字幕卡 → player.seekTo(start)
+「下載音訊」鈕 → downloadAudio(url, videoId, dataRoot)（mp3）→ 回填 audioPath → videosUpsert
 ```
+
+- **每影片一資料夾**：`<dataRoot>/videos/<id>/`，含 `en.srt` / `cover.jpg` / `info.json`、（按鈕後）`audio.mp3`。**取代**舊的扁平 `subtitles/<id>.srt`（舊檔保留不遷移）。
+- **videos 表**：`prepareVideo` 回傳的 `VideoInfo` 經 `videosUpsert` 寫入 SQLite（`<dataRoot>/LearnEnglish.db`）；以 `id` upsert、`audio_path` 用 `COALESCE` 保護。表自動顯示在「資料庫 → 管理 → 資料庫表格」瀏覽器，**檢視免另寫 UI**。schema 見 `src-tauri/src/lib.rs` 的 `VIDEOS_SCHEMA`、計畫見 `Tasks/imp-videos-table.md`。
+- **mp3 手動下載**：`download_audio` 由 url-bar 的「下載音訊」鈕觸發（非每次換片自動，避免耗時/頻寬）；`audioStatus` 狀態機（idle/downloading/done/error）為 view-local。封面下載即存檔+入庫，面板目前不顯示（要顯示用 `convertFileSrc(thumbnailPath)`）。
 
 - **前置需求**：PATH 上需有 `yt-dlp`、`ffmpeg`、`deno` 三者。yt-dlp 抓字幕；ffmpeg 負責 `--convert-subs srt`（無它會停在 .vtt，`find_srt` 找不到→誤判無字幕）；**deno 是 yt-dlp 預設 JS runtime**——新版 yt-dlp 缺 JS runtime 會對許多影片誤報「This video is not available」，裝 deno 即解。
 - **字幕來源**：手動優先、無則自動。`--sub-langs` 用**有界英文清單** `en-orig,en,en-US,en-GB`（見 `download_subtitle`）——**切勿用 `en.*`**：它會匹配上百條自動翻譯軌，YouTube 直接回 **HTTP 429** 限流且產出一堆檔。後端 command 見 `src-tauri/src/lib.rs`，設計見 `Tasks/imp-youtube-Subtitles.md`。
 - **yt-dlp JS runtime 警告**：新版 yt-dlp 會警告「No supported JavaScript runtime（deno）」，目前仍可抓字幕；若日後抽取失敗，需裝 deno（見 yt-dlp EJS wiki）。
 - **快取**：以 `<videoId>*.srt` 前綴掃描判斷（不寫死語言碼，容 `en-US`/`en-orig`），命中即不重抓。
 - **狀態機**：`SubtitleStatus = idle|loading|ready|empty|error`；後端以訊息「無可用英文字幕」區分 empty 與真正 error。
-- **data root vs workdir**：字幕存 `<dataRoot>/subtitles/`（`data-root-store`，app 產生物的家），**與編輯器 `workdir`（使用者文件）分開**。新增會寫檔的功能沿用此 data root 加子資料夾，勿再散出新 workdir 設定。
+- **data root vs workdir**：影片資料存 `<dataRoot>/videos/<id>/`（`data-root-store`，app 產生物的家），**與編輯器 `workdir`（使用者文件）分開**。新增會寫檔的功能沿用此 data root 加子資料夾，勿再散出新 workdir 設定。
 
 ## 必守的眉角
 

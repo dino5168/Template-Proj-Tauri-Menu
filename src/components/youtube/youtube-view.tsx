@@ -14,7 +14,18 @@ import {
 import { parseYouTubeId } from "@/lib/youtube";
 import { activeCueIndex, parseSrt, type Cue } from "@/lib/srt";
 import { resolveDataRoot } from "@/lib/data-root-store";
-import { downloadSubtitle, readTextFile } from "@/lib/tauri";
+import { joinPath } from "@/lib/path";
+import {
+  DB_FILE_NAME,
+  downloadAudio,
+  prepareVideo,
+  readTextFile,
+  videosUpsert,
+  type VideoInfo,
+} from "@/lib/tauri";
+
+/** 音訊下載狀態（「下載音訊」鈕）。 */
+export type AudioStatus = "idle" | "downloading" | "done" | "error";
 
 /** YouTube 播放器「播放中」狀態碼（YT IFrame API）。 */
 const PLAYING = 1;
@@ -36,6 +47,10 @@ export function YoutubeView() {
   const [cues, setCues] = useState<Cue[]>([]);
   const [subtitleError, setSubtitleError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
+
+  // 影片記錄與音訊下載狀態（mp3 由「下載音訊」鈕觸發）。
+  const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
+  const [audioStatus, setAudioStatus] = useState<AudioStatus>("idle");
 
   const playerRef = useRef<YTPlayer | null>(null);
   const pollRef = useRef<number | null>(null);
@@ -63,7 +78,7 @@ export function YoutubeView() {
   // 卸載時清除輪詢計時器。
   useEffect(() => stopPolling, []);
 
-  // videoId / url 變更：重置狀態並下載解析字幕。
+  // videoId / url 變更：重置狀態 → prepareVideo（字幕+封面+metadata）→ 入庫 → 解析字幕。
   useEffect(() => {
     if (!videoId) return;
     let cancelled = false;
@@ -71,6 +86,8 @@ export function YoutubeView() {
     setCurrentTime(0);
     setCues([]);
     setSubtitleError(null);
+    setVideoInfo(null);
+    setAudioStatus("idle");
     setStatus("loading");
 
     void (async () => {
@@ -82,20 +99,30 @@ export function YoutubeView() {
         return;
       }
 
-      const dl = await downloadSubtitle(url, videoId, dataRoot, "en");
+      const res = await prepareVideo(url, videoId, dataRoot);
       if (cancelled) return;
-      if (dl.error) {
-        // 後端以特定訊息表示「影片本身無字幕」，與真正錯誤區分。
-        if (dl.error.message.includes("無可用英文字幕")) {
-          setStatus("empty");
-        } else {
-          setSubtitleError(dl.error.message);
-          setStatus("error");
-        }
+      if (res.error) {
+        setSubtitleError(res.error.message);
+        setStatus("error");
+        return;
+      }
+      const info = res.data;
+      setVideoInfo(info);
+      // mp3 可能先前已下載過（快取），同步音訊鈕狀態。
+      if (info.audioPath) setAudioStatus("done");
+
+      // 寫入 videos 表（失敗不阻斷播放，僅記 log）。
+      const dbPath = joinPath(dataRoot, DB_FILE_NAME);
+      const up = await videosUpsert(dbPath, info);
+      if (up.error) console.error("videos 入庫失敗：", up.error);
+
+      // 無字幕 → empty（仍可播放）。
+      if (!info.subtitlePath) {
+        if (!cancelled) setStatus("empty");
         return;
       }
 
-      const read = await readTextFile(dl.data);
+      const read = await readTextFile(info.subtitlePath);
       if (cancelled) return;
       if (read.error) {
         setSubtitleError(read.error.message);
@@ -111,6 +138,31 @@ export function YoutubeView() {
       cancelled = true;
     };
   }, [videoId, url]);
+
+  /** 「下載音訊」：拉 mp3 → 回填 audio_path 入庫。 */
+  async function handleDownloadAudio(): Promise<void> {
+    if (!videoId || audioStatus === "downloading") return;
+    setAudioStatus("downloading");
+    const dataRoot = await resolveDataRoot();
+    if (!dataRoot) {
+      setAudioStatus("error");
+      return;
+    }
+    const res = await downloadAudio(url, videoId, dataRoot);
+    if (res.error) {
+      console.error("音訊下載失敗：", res.error);
+      setAudioStatus("error");
+      return;
+    }
+    setAudioStatus("done");
+    // 回填 audio_path（COALESCE 保護，後續 prepare 不會清掉）。
+    if (videoInfo) {
+      const next = { ...videoInfo, audioPath: res.data };
+      setVideoInfo(next);
+      const up = await videosUpsert(joinPath(dataRoot, DB_FILE_NAME), next);
+      if (up.error) console.error("videos 更新 audio_path 失敗：", up.error);
+    }
+  }
 
   function handleSubmit(raw: string): void {
     const id = parseYouTubeId(raw);
@@ -138,7 +190,13 @@ export function YoutubeView() {
 
   return (
     <div className="flex h-full flex-col">
-      <YouTubeUrlBar onSubmit={handleSubmit} error={urlError} />
+      <YouTubeUrlBar
+        onSubmit={handleSubmit}
+        error={urlError}
+        canDownloadAudio={!!videoId}
+        audioStatus={audioStatus}
+        onDownloadAudio={() => void handleDownloadAudio()}
+      />
 
       <div className="min-h-0 flex-1">
         <ResizablePanelGroup orientation="horizontal">
