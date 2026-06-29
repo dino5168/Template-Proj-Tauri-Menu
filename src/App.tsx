@@ -4,6 +4,7 @@ import { TitleBar } from "@/components/layout/title-bar";
 import { MarkdownView } from "@/components/markdown/markdown-view";
 import { HtmlView } from "@/components/html/html-view";
 import { MarkdownEditorView } from "@/components/editor/markdown-editor-view";
+import { YoutubeView } from "@/components/youtube/youtube-view";
 import { Button } from "@/components/ui/button";
 import { useView } from "@/lib/view-store";
 
@@ -21,6 +22,8 @@ function App() {
           <HtmlView />
         ) : view === "editor" ? (
           <MarkdownEditorView />
+        ) : view === "youtube" ? (
+          <YoutubeView />
         ) : (
           <HomeView />
         )}

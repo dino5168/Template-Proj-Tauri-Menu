@@ -40,7 +40,7 @@ export default defineConfig(async () => ({
       // 時會寫入這些目錄，若被 Vite 監看會觸發 HMR 整頁重載，使 in-memory 的
       // view / editor 狀態歸零而「跳回首頁」。這些目錄是內容資料、非原始碼，
       // 本就不需 HMR。（僅影響 `tauri dev`；正式 build 無 watcher、無此問題。）
-      ignored: ["**/src-tauri/**", "**/docs/**", "**/htmls/**"],
+      ignored: ["**/src-tauri/**", "**/docs/**", "**/htmls/**", "**/data/**"],
     },
   },
 }));

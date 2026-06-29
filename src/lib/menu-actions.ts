@@ -12,6 +12,7 @@ import {
   setCurrentPath,
 } from "@/lib/editor-store";
 import { getWorkdir, setWorkdir } from "@/lib/workdir-store";
+import { getDataRoot, setDataRoot } from "@/lib/data-root-store";
 import { MARKDOWN_EXTS, readMarkdown, writeFile } from "@/lib/tauri";
 
 /** Windows 不合法的檔名字元（含控制字元）。 */
@@ -111,6 +112,22 @@ async function pickWorkdir(): Promise<void> {
 }
 
 /**
+ * 選取並持久化應用資料根目錄（「設定 → 資料目錄」）。
+ *
+ * app 產生物（字幕、未來錄音等）會寫到此目錄下的功能子資料夾。未自訂時
+ * 系統退回預設（見 data-root-store）。使用者取消時不變更現有設定。
+ */
+async function pickDataRoot(): Promise<void> {
+  const dir = await open({
+    directory: true,
+    multiple: false,
+    defaultPath: getDataRoot() ?? undefined,
+  });
+  if (typeof dir !== "string") return; // 使用者取消
+  setDataRoot(dir);
+}
+
+/**
  * 儲存當前編輯器內容。
  *
  * - 已知來源路徑（開啟既有檔或曾另存）→ 直接覆蓋，不跳對話框。
@@ -158,5 +175,7 @@ export const menuActions: Record<MenuActionId, () => void> = {
   "view.theme": () => toggleTheme(),
   "doc.markdown": () => setView("markdown"),
   "doc.html": () => setView("html"),
+  "learning.youtube": () => setView("youtube"),
   "settings.workdir": () => void pickWorkdir(),
+  "settings.dataRoot": () => void pickDataRoot(),
 };

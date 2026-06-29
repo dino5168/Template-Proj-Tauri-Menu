@@ -61,3 +61,43 @@ export async function writeFile(
 export async function defaultDir(name: string): Promise<string> {
   return invoke<string>("default_dir", { name });
 }
+
+/** 取得（並建立）預設應用資料根目錄；供使用者未自訂時取用。 */
+export async function defaultDataRoot(): Promise<Result<string>> {
+  try {
+    return { data: await invoke<string>("default_data_root"), error: null };
+  } catch (e) {
+    return { data: null, error: toError(e) };
+  }
+}
+
+/** 讀取任意 UTF-8 文字檔（字幕 srt 等）。 */
+export async function readTextFile(path: string): Promise<Result<string>> {
+  try {
+    return { data: await invoke<string>("read_text_file", { path }), error: null };
+  } catch (e) {
+    return { data: null, error: toError(e) };
+  }
+}
+
+/**
+ * 確保影片字幕存在於 `<dataRoot>/subtitles/` 並回傳 srt 絕對路徑。
+ *
+ * 已快取則跳過下載；否則以 yt-dlp 下載（手動優先、無則自動）。影片無英文字幕、
+ * 或找不到 yt-dlp 時以 error 回傳。
+ */
+export async function downloadSubtitle(
+  url: string,
+  videoId: string,
+  dataRoot: string,
+  lang: string,
+): Promise<Result<string>> {
+  try {
+    return {
+      data: await invoke<string>("download_subtitle", { url, videoId, dataRoot, lang }),
+      error: null,
+    };
+  } catch (e) {
+    return { data: null, error: toError(e) };
+  }
+}

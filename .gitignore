@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# 應用資料根目錄（dev 預設）：字幕快取、未來錄音等 app 產生物
+/data/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

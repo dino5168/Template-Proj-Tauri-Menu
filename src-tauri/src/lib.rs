@@ -117,6 +117,123 @@ fn default_dir(name: String) -> String {
         .unwrap_or_default()
 }
 
+/// 去掉 Windows `canonicalize` 的 `\\?\` 延伸長度前綴；canonicalize 失敗則回原路徑字串。
+fn clean_path(path: &Path) -> String {
+    let s = std::fs::canonicalize(path)
+        .map(|c| c.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| path.to_string_lossy().into_owned());
+    s.strip_prefix(r"\\?\").map(str::to_owned).unwrap_or(s)
+}
+
+/// 在 `dir` 內尋找該影片的字幕 srt。
+///
+/// yt-dlp 可能同時輸出多條英文軌（`<id>.en.srt`、`<id>.en-orig.srt`…），故先取
+/// 精確的 `<id>.<lang>.srt`（通常較乾淨），找不到再退而求任一 `<id>*.srt`。
+fn find_srt(dir: &Path, video_id: &str, lang: &str) -> Option<PathBuf> {
+    let exact = dir.join(format!("{video_id}.{lang}.srt"));
+    if exact.is_file() {
+        return Some(exact);
+    }
+    std::fs::read_dir(dir)
+        .ok()?
+        .flatten()
+        .map(|e| e.path())
+        .find(|p| {
+            p.extension().and_then(|e| e.to_str()) == Some("srt")
+                && p.file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(|n| n.starts_with(video_id))
+        })
+}
+
+/// 解析並建立預設應用資料根目錄，回傳絕對路徑。
+///
+/// debug：專案根 `/data`（`CARGO_MANIFEST_DIR` 為 `src-tauri`，取其父）。
+/// release：執行檔同層 `/data`。供前端 data-root-store 在使用者未自訂時取用。
+#[tauri::command]
+fn default_data_root() -> Result<String, String> {
+    let base: PathBuf = if cfg!(debug_assertions) {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|| PathBuf::from("."))
+    } else {
+        std::env::current_exe()
+            .ok()
+            .and_then(|exe| exe.parent().map(Path::to_path_buf))
+            .unwrap_or_else(|| PathBuf::from("."))
+    };
+    let root = base.join("data");
+    std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+    Ok(clean_path(&root))
+}
+
+/// 讀任意 UTF-8 文字檔（字幕 srt 等用）。
+#[tauri::command]
+fn read_text_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(&path).map_err(|e| e.to_string())
+}
+
+/// 確保指定影片的英文字幕存在於 `<data_root>/subtitles/`，回傳 srt 絕對路徑。
+///
+/// 流程：建立 subtitles 目錄 → 命中快取（`<video_id>*.srt`）即回、不下載 →
+/// 否則 yt-dlp 下載（手動優先、無則自動，轉 srt）→ 重掃 → 仍無則 `Err`。
+///
+/// yt-dlp 為外部 CLI、含網路 IO，故以 `spawn_blocking` 包裝避免阻塞 async runtime。
+#[tauri::command]
+async fn download_subtitle(
+    url: String,
+    video_id: String,
+    data_root: String,
+    lang: String,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let subtitles_dir = Path::new(&data_root).join("subtitles");
+        std::fs::create_dir_all(&subtitles_dir).map_err(|e| e.to_string())?;
+
+        // 快取：已下載過就直接回，不再呼叫 yt-dlp。
+        if let Some(p) = find_srt(&subtitles_dir, &video_id, &lang) {
+            return Ok(clean_path(&p));
+        }
+
+        // 有界的英文優先清單：涵蓋手動 `en` 與自動原文 `en-orig` 等常見軌，
+        // 但**不**用 `en.*`（會匹配上百條自動翻譯軌→YouTube 回 HTTP 429 限流）。
+        let sub_langs = format!("{lang}-orig,{lang},{lang}-US,{lang}-GB");
+        let out_tmpl = subtitles_dir.join("%(id)s.%(ext)s");
+
+        let output = std::process::Command::new("yt-dlp")
+            .arg("--skip-download")
+            .arg("--write-subs")
+            .arg("--write-auto-subs")
+            .arg("--sub-langs")
+            .arg(&sub_langs)
+            .arg("--convert-subs")
+            .arg("srt")
+            .arg("-o")
+            .arg(&out_tmpl)
+            .arg(&url)
+            .output()
+            .map_err(|e| match e.kind() {
+                std::io::ErrorKind::NotFound => {
+                    "找不到 yt-dlp，請確認已安裝並加入 PATH".to_string()
+                }
+                _ => e.to_string(),
+            })?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("yt-dlp 失敗：{}", stderr.trim()));
+        }
+
+        match find_srt(&subtitles_dir, &video_id, &lang) {
+            Some(p) => Ok(clean_path(&p)),
+            None => Err("此影片無可用英文字幕".to_string()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -127,7 +244,10 @@ pub fn run() {
             list_dir,
             read_markdown,
             write_file,
-            default_dir
+            default_dir,
+            default_data_root,
+            read_text_file,
+            download_subtitle
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
