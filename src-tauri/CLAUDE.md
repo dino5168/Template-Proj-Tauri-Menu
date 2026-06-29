@@ -2,13 +2,19 @@
 
 > 此檔為 `src-tauri/` 子系統說明，補充根 `CLAUDE.md` 的「IPC」與「自訂標題列」段落。在這個目錄下工作時讀這份。
 
-## 真正的入口
+## 入口與模組結構
 
-- `src/lib.rs` 是真入口：定義所有 `#[tauri::command]` 與 `tauri::Builder`。`src/main.rs` 只呼叫 `run()`。
+- `src/lib.rs` 是真入口：只留 `mod` 宣告、template demo `greet` 與 `run()`／`generate_handler!`。`src/main.rs` 只呼叫 `run()`。
+- command 按**領域**分於四個模組（重構計畫見 `Tasks/imp-refactory-lib.md`）：
+  - `fs.rs` — 檔案系統：`list_dir` / `read_markdown` / `write_file` / `read_text_file`（+ `FileNode`）。
+  - `paths.rs` — 路徑/app 目錄：`default_dir` / `default_data_root`（+ `pub(crate) clean_path`）。
+  - `video.rs` — yt-dlp 影片：`prepare_video` / `download_audio`（+ `pub(crate) VideoInfo`、`find_srt`/`find_thumbnail`）。
+  - `db.rs` — SQLite：`db_init` / `db_list_tables` / `db_table_schema` / `db_table_rows` / `videos_upsert`（+ `VIDEOS_SCHEMA`）。
 - **新增 command 的三步驟**（漏任一步前端就 invoke 不到）：
-  1. 在 `lib.rs` 寫 `#[tauri::command] fn xxx(...) -> Result<T, String>`。
-  2. 加進 `invoke_handler(tauri::generate_handler![... , xxx])`。
+  1. 在**對應領域模組**寫 `#[tauri::command] pub fn xxx(...) -> Result<T, String>`（**command 函式須 `pub`**，否則 lib.rs 的 `generate_handler!` 引用不到）。
+  2. 在 `lib.rs` 的 `generate_handler![...]` 以 `模組::xxx` 註冊。
   3. 前端在 `src/lib/tauri.ts` 加封裝（**不要**在元件散落 raw `invoke`，見 `src/lib/CLAUDE.md`）。
+- ⚠️ **command 的回傳/收參 struct 須 `pub(crate)`**：`generate_handler!` 在 lib.rs 展開時要看得到型別，私有會報「private type」（見 `FileNode`/`ColumnInfo`/`TableRows`/`VideoInfo`）。跨模組共用的 helper/型別也用 `pub(crate)`（如 `paths::clean_path`、`video::VideoInfo`）。
 - 回傳型別慣例：可能失敗的用 `Result<T, String>`（前端 `tauri.ts` 轉成 Result type）；不會失敗的回純值（如 `default_dir` 找不到回空字串）。
 - 序列化：struct 加 `#[derive(Serialize)]` + `#[serde(rename_all = "camelCase")]`，前端介面用 camelCase（見 `FileNode`）。
 
