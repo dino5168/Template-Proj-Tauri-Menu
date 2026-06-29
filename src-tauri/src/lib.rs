@@ -260,6 +260,8 @@ fn value_to_string(v: rusqlite::types::Value) -> Option<String> {
 }
 
 /// 開啟（不存在則建立）DB，並確保 demo 用的 `test` 表存在。
+///
+/// 表為空時塞入幾筆種子資料（供「資料」tab demo）；非空則不動，故可重複呼叫。
 #[tauri::command]
 fn db_init(db_path: String) -> Result<(), String> {
     let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
@@ -271,6 +273,18 @@ fn db_init(db_path: String) -> Result<(), String> {
         );",
     )
     .map_err(|e| e.to_string())?;
+
+    // 僅在空表時種子，避免每次啟動重複塞。
+    let count: i64 = conn
+        .query_row("SELECT COUNT(*) FROM test", [], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    if count == 0 {
+        conn.execute(
+            "INSERT INTO test (name) VALUES ('Alice'), ('Bob'), ('Carol'), ('Dave')",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
