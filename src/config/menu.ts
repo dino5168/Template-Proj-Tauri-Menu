@@ -21,6 +21,8 @@ import {
   Database,
   GraduationCap,
   MonitorPlay,
+  Wrench,
+  Table2,
 } from "lucide-react";
 
 /** 選單項目的 action 識別碼；對應 menu-actions.ts 的 dispatch table。 */
@@ -38,6 +40,7 @@ export type MenuActionId =
   | "doc.markdown"
   | "doc.html"
   | "learning.youtube"
+  | "database.tables"
   | "settings.workdir"
   | "settings.dataRoot";
 
@@ -117,6 +120,20 @@ export const menuConfig: MenuGroup[] = [
     icon: GraduationCap,
     items: [
       { kind: "item", label: "Youtube", action: "learning.youtube", icon: MonitorPlay },
+    ],
+  },
+  {
+    label: "資料庫",
+    icon: Database,
+    items: [
+      {
+        kind: "submenu",
+        label: "管理",
+        icon: Wrench,
+        items: [
+          { kind: "item", label: "資料庫表格", action: "database.tables", icon: Table2 },
+        ],
+      },
     ],
   },
   {

@@ -13,6 +13,7 @@ import {
 } from "@/lib/editor-store";
 import { getWorkdir, setWorkdir } from "@/lib/workdir-store";
 import { getDataRoot, setDataRoot } from "@/lib/data-root-store";
+import { joinPath } from "@/lib/path";
 import { MARKDOWN_EXTS, readMarkdown, writeFile } from "@/lib/tauri";
 
 /** Windows 不合法的檔名字元（含控制字元）。 */
@@ -29,19 +30,6 @@ function defaultFilename(md: string): string {
   const match = md.match(/^\s*#\s+(.+?)\s*#*\s*$/m);
   const title = match?.[1].replace(ILLEGAL_FILENAME, "").replace(/\s+/g, " ").trim();
   return title || "未命名";
-}
-
-/**
- * 把檔名接到目錄後面，組成存檔對話框的預設完整路徑。
- *
- * 分隔符依目錄既有字元推斷（Windows 路徑含 `\`），避免為了 join 走 IPC／權限。
- *
- * @param dir - 工作目錄絕對路徑（來自 OS 選資料夾器）。
- * @param name - 含副檔名的檔名。
- */
-function joinPath(dir: string, name: string): string {
-  const sep = dir.includes("\\") ? "\\" : "/";
-  return `${dir.replace(/[\\/]+$/, "")}${sep}${name}`;
 }
 
 /**
@@ -176,6 +164,7 @@ export const menuActions: Record<MenuActionId, () => void> = {
   "doc.markdown": () => setView("markdown"),
   "doc.html": () => setView("html"),
   "learning.youtube": () => setView("youtube"),
+  "database.tables": () => setView("database"),
   "settings.workdir": () => void pickWorkdir(),
   "settings.dataRoot": () => void pickDataRoot(),
 };

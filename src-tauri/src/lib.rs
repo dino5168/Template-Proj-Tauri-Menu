@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use rusqlite::Connection;
 use serde::Serialize;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -234,6 +235,136 @@ async fn download_subtitle(
     .map_err(|e| e.to_string())?
 }
 
+// ───────────────────────────── SQLite（rusqlite）─────────────────────────────
+//
+// DB 檔路徑由前端組好（<dataRoot>/LearnEnglish.db）傳入，後端不自行決定位置，
+// 維持與既有 command「路徑由前端決定」的一致原則。DB 小、查詢低頻，故每個
+// command 開新 Connection 即可，不引入連線池 / 共用 state（YAGNI）。
+
+/// 只允許英數與底線的識別字。PRAGMA 與 table 名無法以參數綁定，
+/// 用白名單擋掉非法字元以防 SQL 注入。
+fn is_valid_ident(s: &str) -> bool {
+    !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
+/// 將任意 SQLite 值轉成顯示用字串；NULL 回 `None`。
+fn value_to_string(v: rusqlite::types::Value) -> Option<String> {
+    use rusqlite::types::Value::*;
+    match v {
+        Null => None,
+        Integer(i) => Some(i.to_string()),
+        Real(f) => Some(f.to_string()),
+        Text(s) => Some(s),
+        Blob(b) => Some(format!("<blob {} bytes>", b.len())),
+    }
+}
+
+/// 開啟（不存在則建立）DB，並確保 demo 用的 `test` 表存在。
+#[tauri::command]
+fn db_init(db_path: String) -> Result<(), String> {
+    let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS test (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );",
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// 列出 DB 內所有使用者資料表名稱（排除 `sqlite_` 內部表），依名稱排序。
+#[tauri::command]
+fn db_list_tables(db_path: String) -> Result<Vec<String>, String> {
+    let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT name FROM sqlite_master \
+             WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+        )
+        .map_err(|e| e.to_string())?;
+    let names = stmt
+        .query_map([], |r| r.get::<_, String>(0))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    Ok(names)
+}
+
+/// 單一欄位的結構資訊（對應 `PRAGMA table_info`）。
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ColumnInfo {
+    name: String,
+    type_name: String,
+    not_null: bool,
+    pk: bool,
+    default_value: Option<String>,
+}
+
+/// 取得指定表的欄位結構（`PRAGMA table_info`）。
+#[tauri::command]
+fn db_table_schema(db_path: String, table: String) -> Result<Vec<ColumnInfo>, String> {
+    if !is_valid_ident(&table) {
+        return Err(format!("非法表名：{table}"));
+    }
+    let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+    // 表名已過白名單，PRAGMA 不支援參數綁定故以 format! 內插。
+    let mut stmt = conn
+        .prepare(&format!("PRAGMA table_info(\"{table}\")"))
+        .map_err(|e| e.to_string())?;
+    let cols = stmt
+        .query_map([], |r| {
+            Ok(ColumnInfo {
+                name: r.get(1)?,
+                type_name: r.get(2)?,
+                not_null: r.get::<_, i64>(3)? != 0,
+                default_value: r.get(4)?,
+                pk: r.get::<_, i64>(5)? != 0,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    Ok(cols)
+}
+
+/// 表的資料列（前 `limit` 筆）。欄名 + 字串化儲存格，避免動態型別序列化複雜度。
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TableRows {
+    columns: Vec<String>,
+    rows: Vec<Vec<Option<String>>>,
+}
+
+/// 取得指定表的資料列（`SELECT * LIMIT ?`）。
+#[tauri::command]
+fn db_table_rows(db_path: String, table: String, limit: u32) -> Result<TableRows, String> {
+    if !is_valid_ident(&table) {
+        return Err(format!("非法表名：{table}"));
+    }
+    let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(&format!("SELECT * FROM \"{table}\" LIMIT ?1"))
+        .map_err(|e| e.to_string())?;
+    let columns: Vec<String> = stmt.column_names().iter().map(|s| s.to_string()).collect();
+    let col_count = columns.len();
+    let rows = stmt
+        .query_map([limit], |r| {
+            let mut row = Vec::with_capacity(col_count);
+            for i in 0..col_count {
+                let v: rusqlite::types::Value = r.get(i)?;
+                row.push(value_to_string(v));
+            }
+            Ok(row)
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    Ok(TableRows { columns, rows })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -247,7 +378,11 @@ pub fn run() {
             default_dir,
             default_data_root,
             read_text_file,
-            download_subtitle
+            download_subtitle,
+            db_init,
+            db_list_tables,
+            db_table_schema,
+            db_table_rows
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

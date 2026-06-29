@@ -21,6 +21,24 @@ function toError(e: unknown): Error {
 export const MARKDOWN_EXTS = ["md", "markdown"];
 export const HTML_EXTS = ["html", "htm"];
 
+/** 應用 SQLite 資料庫檔名（置於 data root 下）。 */
+export const DB_FILE_NAME = "LearnEnglish.db";
+
+/** 單一欄位結構（對應 Rust ColumnInfo，camelCase）。 */
+export interface ColumnInfo {
+  name: string;
+  typeName: string;
+  notNull: boolean;
+  pk: boolean;
+  defaultValue: string | null;
+}
+
+/** 表的資料列（對應 Rust TableRows，camelCase）。 */
+export interface TableRows {
+  columns: string[];
+  rows: (string | null)[][];
+}
+
 /** 讀取目錄樹（只含資料夾與符合 exts 的檔案）。 */
 export async function listDir(
   root: string,
@@ -95,6 +113,55 @@ export async function downloadSubtitle(
   try {
     return {
       data: await invoke<string>("download_subtitle", { url, videoId, dataRoot, lang }),
+      error: null,
+    };
+  } catch (e) {
+    return { data: null, error: toError(e) };
+  }
+}
+
+/** 開啟（不存在則建立）DB，並確保 demo 用的 `test` 表存在。 */
+export async function dbInit(dbPath: string): Promise<Result<void>> {
+  try {
+    return { data: await invoke<void>("db_init", { dbPath }), error: null };
+  } catch (e) {
+    return { data: null, error: toError(e) };
+  }
+}
+
+/** 列出 DB 內所有使用者資料表名稱。 */
+export async function dbListTables(dbPath: string): Promise<Result<string[]>> {
+  try {
+    return { data: await invoke<string[]>("db_list_tables", { dbPath }), error: null };
+  } catch (e) {
+    return { data: null, error: toError(e) };
+  }
+}
+
+/** 取得指定表的欄位結構（PRAGMA table_info）。 */
+export async function dbTableSchema(
+  dbPath: string,
+  table: string,
+): Promise<Result<ColumnInfo[]>> {
+  try {
+    return {
+      data: await invoke<ColumnInfo[]>("db_table_schema", { dbPath, table }),
+      error: null,
+    };
+  } catch (e) {
+    return { data: null, error: toError(e) };
+  }
+}
+
+/** 取得指定表的資料列（前 limit 筆）。 */
+export async function dbTableRows(
+  dbPath: string,
+  table: string,
+  limit: number,
+): Promise<Result<TableRows>> {
+  try {
+    return {
+      data: await invoke<TableRows>("db_table_rows", { dbPath, table, limit }),
       error: null,
     };
   } catch (e) {
