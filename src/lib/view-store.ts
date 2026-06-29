@@ -6,7 +6,7 @@ import { useSyncExternalStore } from "react";
  * - menu action（非 React）用 setView() 切換。
  * - React 元件用 useView() 訂閱。
  */
-export type View = "home" | "markdown" | "html" | "editor";
+export type View = "home" | "markdown" | "html" | "editor" | "youtube" | "database";
 
 let current: View = "home";
 const listeners = new Set<() => void>();

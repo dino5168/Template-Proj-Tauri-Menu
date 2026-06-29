@@ -11,6 +11,7 @@
 | `theme.ts` | 亮/暗主題 | 切 `<html>.dark` + localStorage；無 React context |
 | `menu-actions.ts` | 選單 action dispatch | `Record<MenuActionId, () => void>`；與 `config/menu.ts` 配對（見 `src/config/CLAUDE.md`） |
 | `editor-store.ts` | editor 視圖狀態中樞 | 文件來源（`openDocument`/`newDocument`/`useEditorDocument`，`docId` 驅動 remount）+ 存檔取值橋接（`setActiveEditor`/`getActiveEditor`）；細節見 `src/components/editor/CLAUDE.md` |
+| `workdir-store.ts` | 工作目錄設定 | localStorage 持久化（`getWorkdir`/`setWorkdir`），由 `settings.workdir` 設定、編輯器開檔／存檔對話框拿來當預設起始路徑；無 UI 訂閱故不走 `useSyncExternalStore` |
 | `utils.ts` | `cn()` | className 合併 |
 
 ## tauri.ts — IPC 封裝鐵則

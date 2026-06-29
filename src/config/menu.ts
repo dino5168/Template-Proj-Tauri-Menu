@@ -18,6 +18,11 @@ import {
   Code,
   Settings,
   FolderCog,
+  Database,
+  GraduationCap,
+  MonitorPlay,
+  Wrench,
+  Table2,
 } from "lucide-react";
 
 /** 選單項目的 action 識別碼；對應 menu-actions.ts 的 dispatch table。 */
@@ -34,7 +39,10 @@ export type MenuActionId =
   | "view.theme"
   | "doc.markdown"
   | "doc.html"
-  | "settings.workdir";
+  | "learning.youtube"
+  | "database.tables"
+  | "settings.workdir"
+  | "settings.dataRoot";
 
 /** 可點擊的一般項目。 */
 interface MenuActionItem {
@@ -108,10 +116,32 @@ export const menuConfig: MenuGroup[] = [
     ],
   },
   {
+    label: "學習",
+    icon: GraduationCap,
+    items: [
+      { kind: "item", label: "Youtube", action: "learning.youtube", icon: MonitorPlay },
+    ],
+  },
+  {
+    label: "資料庫",
+    icon: Database,
+    items: [
+      {
+        kind: "submenu",
+        label: "管理",
+        icon: Wrench,
+        items: [
+          { kind: "item", label: "資料庫表格", action: "database.tables", icon: Table2 },
+        ],
+      },
+    ],
+  },
+  {
     label: "設定",
     icon: Settings,
     items: [
       { kind: "item", label: "環境設定", action: "settings.workdir", icon: FolderCog },
+      { kind: "item", label: "資料目錄", action: "settings.dataRoot", icon: Database },
     ],
   },
 ];

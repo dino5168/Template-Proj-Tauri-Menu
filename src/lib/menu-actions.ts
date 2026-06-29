@@ -11,6 +11,9 @@ import {
   openDocument,
   setCurrentPath,
 } from "@/lib/editor-store";
+import { getWorkdir, setWorkdir } from "@/lib/workdir-store";
+import { getDataRoot, setDataRoot } from "@/lib/data-root-store";
+import { joinPath } from "@/lib/path";
 import { MARKDOWN_EXTS, readMarkdown, writeFile } from "@/lib/tauri";
 
 /** Windows 不合法的檔名字元（含控制字元）。 */
@@ -38,6 +41,7 @@ async function openFile(): Promise<void> {
   const path = await open({
     multiple: false,
     directory: false,
+    defaultPath: getWorkdir() ?? undefined, // 從工作目錄起始
     filters: [{ name: "Markdown", extensions: MARKDOWN_EXTS }],
   });
   if (typeof path !== "string") return; // 使用者取消
@@ -62,8 +66,11 @@ async function saveAsActiveEditor(): Promise<void> {
   if (!getMarkdown) return; // 不在編輯器視圖
 
   const md = getMarkdown();
+  // 預設檔名取 H1 標題；有工作目錄則以其為起始路徑。
+  const name = `${defaultFilename(md)}.md`;
+  const dir = getWorkdir();
   const path = await save({
-    defaultPath: `${defaultFilename(md)}.md`,
+    defaultPath: dir ? joinPath(dir, name) : name,
     filters: [{ name: "Markdown", extensions: ["md", "markdown"] }],
   });
   if (path === null) return; // 使用者取消
@@ -74,6 +81,38 @@ async function saveAsActiveEditor(): Promise<void> {
     return;
   }
   setCurrentPath(path); // 之後「儲存檔案」即覆蓋此檔
+}
+
+/**
+ * 選取並持久化工作目錄（「設定 → 環境設定」）。
+ *
+ * 之後編輯器的開檔／存檔對話框會以此為預設起始位置（見 workdir-store）。
+ * 使用者取消時不變更現有設定。
+ */
+async function pickWorkdir(): Promise<void> {
+  const dir = await open({
+    directory: true,
+    multiple: false,
+    defaultPath: getWorkdir() ?? undefined,
+  });
+  if (typeof dir !== "string") return; // 使用者取消
+  setWorkdir(dir);
+}
+
+/**
+ * 選取並持久化應用資料根目錄（「設定 → 資料目錄」）。
+ *
+ * app 產生物（字幕、未來錄音等）會寫到此目錄下的功能子資料夾。未自訂時
+ * 系統退回預設（見 data-root-store）。使用者取消時不變更現有設定。
+ */
+async function pickDataRoot(): Promise<void> {
+  const dir = await open({
+    directory: true,
+    multiple: false,
+    defaultPath: getDataRoot() ?? undefined,
+  });
+  if (typeof dir !== "string") return; // 使用者取消
+  setDataRoot(dir);
 }
 
 /**
@@ -124,7 +163,8 @@ export const menuActions: Record<MenuActionId, () => void> = {
   "view.theme": () => toggleTheme(),
   "doc.markdown": () => setView("markdown"),
   "doc.html": () => setView("html"),
-  "settings.workdir": () => {
-    // TODO: 設定工作目錄（後續接 dialog 選資料夾 + 持久化）
-  },
+  "learning.youtube": () => setView("youtube"),
+  "database.tables": () => setView("database"),
+  "settings.workdir": () => void pickWorkdir(),
+  "settings.dataRoot": () => void pickDataRoot(),
 };
